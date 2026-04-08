@@ -1,0 +1,1067 @@
+Here are **five complete, drop‑in files**, in the order you requested.
+
+---
+
+### 1) `EmotionalDrawerUISpec.md`
+
+```md
+# Lucky Pikas — Emotional Drawer UI Specification
+
+## 1. Purpose
+
+The Emotional Drawer is a slide‑in UI panel that visualizes the player’s current metaphysical/emotional state as tracked by `MetaphysicsCore`. It provides at‑a‑glance feedback on flags (curiosity, courage, clarity, resonance, alignment) and the dominant aspect, reinforcing the emotional arc of the treasure hunt.
+
+This drawer is **read‑only** from the player’s perspective and updates automatically when metaphysical state changes.
+
+---
+
+## 2. Responsibilities
+
+- Display current values of all metaphysical flags.
+- Highlight the current `dominantAspect`.
+- Reflect changes in state with subtle, cinematic animations.
+- Provide short, symbolic labels or tooltips for each flag.
+- React to consequences (e.g., resonance boost, fog penalty) by briefly emphasizing affected flags.
+
+The Emotional Drawer does **not**:
+- Trigger gameplay actions.
+- Modify metaphysical state directly.
+- Replace the consequence messaging drawer.
+
+---
+
+## 3. Data Model
+
+The Emotional Drawer consumes data from `MetaphysicsCore.getEmotionalState()`.
+
+### 3.1 Emotional State Shape
+
+```js
+{
+  curiosity: Number,   // 0–100
+  courage: Number,     // 0–100
+  clarity: Number,     // 0–100
+  resonance: Number,   // 0–100
+  alignment: Number,   // 0–100
+  dominantAspect: String | null // 'curiosity' | 'courage' | 'clarity' | 'resonance' | 'alignment' | null
+}
+```
+
+---
+
+## 4. Layout & Structure
+
+### 4.1 Drawer Position
+
+- **Position:** Right side of the screen.
+- **Behavior:** Slide‑in from the right; slide‑out to the right.
+- **Width:** ~320–400px (responsive).
+- **Height:** Full viewport height.
+- **Z‑Index:** Above main content, below global modals.
+
+### 4.2 Sections
+
+1. **Header**
+   - Title: “Emotional State”
+   - Subtitle: “Your current metaphysical alignment”
+   - Optional icon representing metaphysics (e.g., subtle sigil).
+
+2. **Dominant Aspect Highlight**
+   - Prominent display of `dominantAspect`.
+   - Visual treatment:
+     - Larger text label (e.g., “Dominant: Curiosity”).
+     - Icon or glyph per aspect.
+     - Background accent color tied to aspect.
+
+3. **Flag List**
+   - One row per flag:
+     - Label: “Curiosity”, “Courage”, “Clarity”, “Resonance”, “Alignment”.
+     - Value: 0–100.
+     - Visual meter (horizontal bar or radial gauge).
+   - Each flag row may include:
+     - Short descriptor (e.g., “Curiosity: How much you seek the unknown.”).
+
+4. **Recent Shift Indicator (Optional Phase 2.5)**
+   - Brief text showing last significant change:
+     - Example: “Resonance increased by 10 (Insight sparks a resonance pulse).”
+
+---
+
+## 5. Visual Language
+
+### 5.1 Color Mapping (Example Baseline)
+
+- Curiosity: Teal / Cyan
+- Courage: Amber / Gold
+- Clarity: Light Blue
+- Resonance: Purple
+- Alignment: Emerald Green
+
+Dominant aspect:
+- Slight glow or halo around its row.
+- Header badge with aspect color.
+
+### 5.2 Animations
+
+- Drawer open/close:
+  - 200–300ms slide with easing.
+- Flag change:
+  - Bar smoothly animates from old value to new value.
+  - Brief pulse or glow on changed flag.
+- Dominant aspect change:
+  - Short highlight transition (e.g., fade from old to new).
+
+Animations must be:
+- Subtle.
+- Non‑blocking.
+- Performance‑friendly.
+
+---
+
+## 6. Interactions
+
+### 6.1 Open/Close
+
+- **Open triggers:**
+  - Player taps/clicks an “Emotional State” icon/button in HUD.
+  - System may auto‑open after major metaphysical events (optional, configurable).
+
+- **Close triggers:**
+  - Player taps close icon (X).
+  - Player taps outside drawer (on overlay).
+  - ESC key (desktop).
+
+### 6.2 Input Handling
+
+- Drawer is read‑only.
+- No direct manipulation of values.
+- Scrollable if content exceeds viewport height.
+
+---
+
+## 7. Integration with MetaphysicsCore
+
+### 7.1 Data Source
+
+- Primary API:
+  - `MetaphysicsCore.getEmotionalState()`
+
+### 7.2 Update Triggers
+
+The Emotional Drawer should update when:
+
+- `MetaphysicsCore.applyDeltas(...)` is called.
+- `MetaphysicsCore.resolveConsequences(...)` returns consequences that affect flags.
+- The game session initializes or loads.
+
+Recommended pattern:
+
+- A central event bus or callback system:
+  - `MetaphysicsEvents.on('stateChanged', updateFromMetaphysics)`
+- Or direct calls after state changes:
+  - `EmotionalDrawer.render(MetaphysicsCore.getEmotionalState());`
+
+---
+
+## 8. Public API (UI Layer)
+
+Assuming a simple JS UI module:
+
+```js
+const EmotionalDrawer = {
+  open() { /* slide in and render current state */ },
+  close() { /* slide out */ },
+  toggle() { /* open if closed, close if open */ },
+  render(state) { /* render full state */ },
+  highlightChange(changedKeys) { /* optional: emphasize changed flags */ }
+};
+
+export default EmotionalDrawer;
+```
+
+---
+
+## 9. Performance & Accessibility
+
+- Ensure smooth animation at 60fps on mid‑range devices.
+- Use ARIA roles:
+  - `role="complementary"` or `role="dialog"` depending on implementation.
+- Provide text labels for all icons.
+- Maintain sufficient color contrast for all text and meters.
+
+---
+
+## 10. Future Extensions
+
+- Aspect‑based background themes.
+- Audio cues tied to major metaphysical shifts.
+- Historical mini‑graph of one or more flags.
+- Integration with achievement or title systems.
+```
+
+---
+
+### 2) `ConsequenceDrawerUISpec.md`
+
+```md
+# Lucky Pikas — Consequence Drawer UI Specification
+
+## 1. Purpose
+
+The Consequence Drawer is a slide‑in UI panel that surfaces **recent metaphysical consequences** triggered by player actions. It acts as a cinematic “event log” for metaphysical outcomes: resonance boosts, fog penalties, bravery echoes, alignment surges, and insight rewards.
+
+This drawer is **event‑driven** and focuses on short, readable messages tied to specific rules and actions.
+
+---
+
+## 2. Responsibilities
+
+- Display a list of recent consequences returned by `MetaphysicsCore.resolveConsequences(action)`.
+- Present each consequence with:
+  - Type (e.g., RESONANCE_BOOST).
+  - Short message.
+  - Optional metadata (e.g., node, puzzle).
+- Visually emphasize newly triggered consequences.
+- Optionally auto‑open on major events.
+
+The Consequence Drawer does **not**:
+- Show raw flag values (that’s the Emotional Drawer’s role).
+- Allow direct editing of consequences.
+- Replace system logs or debugging tools.
+
+---
+
+## 3. Data Model
+
+The Consequence Drawer consumes arrays of consequence objects returned by `resolveConsequences(action)`.
+
+### 3.1 Consequence Shape
+
+```js
+{
+  type: String,          // e.g. 'RESONANCE_BOOST', 'FOG_PENALTY', 'BRAVERY_ECHO', 'ALIGNMENT_SURGE', 'INSIGHT_REWARD'
+  delta: Object | null,  // e.g. { resonance: +10 } or { clarity: -5 }
+  reward: String | null, // e.g. 'insight_token'
+  message: String,       // human-readable description
+  meta: Object | null    // optional: { nodeId, puzzleId, ruleId }
+}
+```
+
+---
+
+## 4. Layout & Structure
+
+### 4.1 Drawer Position
+
+- **Position:** Left side of the screen (to complement Emotional Drawer on the right), or configurable.
+- **Behavior:** Slide‑in from the left; slide‑out to the left.
+- **Width:** ~320–400px (responsive).
+- **Height:** Full viewport height.
+- **Z‑Index:** Above main content, below global modals.
+
+### 4.2 Sections
+
+1. **Header**
+   - Title: “Consequences”
+   - Subtitle: “Recent metaphysical outcomes”
+   - Optional icon (e.g., scales, ripple).
+
+2. **Consequence List**
+   - Vertical list of cards, newest at top.
+   - Each card includes:
+     - Type label (e.g., “Resonance Boost”).
+     - Message (e.g., “Insight sparks a resonance pulse.”).
+     - Optional delta summary (e.g., “Resonance +10”).
+     - Optional metadata (e.g., “From: Echo Riddle”).
+
+3. **Empty State**
+   - When no consequences:
+     - Message: “No recent metaphysical consequences.”
+     - Subtext: “Your path is quiet… for now.”
+
+---
+
+## 5. Visual Language
+
+### 5.1 Card Styling
+
+- Each consequence type may have a distinct accent color:
+  - RESONANCE_BOOST: Purple accent.
+  - FOG_PENALTY: Muted gray/blue.
+  - BRAVERY_ECHO: Gold.
+  - ALIGNMENT_SURGE: Green.
+  - INSIGHT_REWARD: Teal.
+
+- Card elements:
+  - Title (type, humanized).
+  - Message (1–2 lines).
+  - Delta summary (small text).
+  - Timestamp (optional).
+
+### 5.2 Animations
+
+- Drawer open/close:
+  - 200–300ms slide with easing.
+- New consequence:
+  - Fade‑in + slight upward motion.
+  - Brief glow or border highlight.
+
+Animations must be:
+- Subtle.
+- Non‑blocking.
+- Performance‑friendly.
+
+---
+
+## 6. Interactions
+
+### 6.1 Open/Close
+
+- **Open triggers:**
+  - Player taps/clicks a “Consequences” icon/button in HUD.
+  - System auto‑opens on major events (e.g., INSIGHT_REWARD).
+
+- **Close triggers:**
+  - Player taps close icon (X).
+  - Player taps outside drawer (on overlay).
+  - ESC key (desktop).
+
+### 6.2 Input Handling
+
+- List is scrollable.
+- Cards are non‑interactive in Phase 2 (no click actions required).
+- Future extension: tapping a card could focus related node/puzzle.
+
+---
+
+## 7. Integration with MetaphysicsCore
+
+### 7.1 Data Source
+
+- Primary input:
+  - `const consequences = MetaphysicsCore.resolveConsequences(action);`
+
+### 7.2 Update Flow
+
+Typical usage:
+
+```js
+const consequences = MetaphysicsCore.resolveConsequences({
+  type: 'PUZZLE_SOLVED',
+  puzzleId: puzzle.id,
+  quality
+});
+
+ConsequenceDrawer.push(consequences);
+```
+
+The drawer module is responsible for:
+- Merging new consequences into its internal list.
+- Rendering the updated list.
+- Optionally auto‑opening on significant events.
+
+---
+
+## 8. Public API (UI Layer)
+
+Assuming a simple JS UI module:
+
+```js
+const ConsequenceDrawer = {
+  open() { /* slide in and render list */ },
+  close() { /* slide out */ },
+  toggle() { /* open if closed, close if open */ },
+  push(newConsequences) { /* add new consequences and re-render */ },
+  render(consequenceList) { /* render full list */ },
+  clear() { /* clear all consequences */ }
+};
+
+export default ConsequenceDrawer;
+```
+
+---
+
+## 9. Performance & Accessibility
+
+- Efficient list rendering (limit to recent N consequences, e.g., 20).
+- ARIA roles:
+  - `role="complementary"` or `role="dialog"` depending on implementation.
+- Provide text labels for all icons.
+- Maintain sufficient color contrast.
+
+---
+
+## 10. Future Extensions
+
+- Filter by type (e.g., only show rewards).
+- Group consequences by node or puzzle.
+- Link to deeper metaphysical logs or analytics.
+- Tie into achievement or title systems.
+```
+
+---
+
+### 3) `MetaphysicsEventFlowDiagram.md`
+
+```md
+# Lucky Pikas — Metaphysics Event Flow Diagram
+
+## 1. Purpose
+
+This document describes the **runtime event flow** for metaphysical state changes in Lucky Pikas during Phase 2. It connects player actions, engine events, `MetaphysicsCore`, and the UI drawers.
+
+---
+
+## 2. High-Level Flow Overview
+
+1. Player performs an action (e.g., enters node, solves puzzle).
+2. Engine emits an action descriptor.
+3. `MetaphysicsCore` optionally applies deltas.
+4. `MetaphysicsCore` resolves consequences based on current state + action.
+5. Emotional state is updated (flags, dominantAspect).
+6. UI drawers update:
+   - Emotional Drawer reflects new state.
+   - Consequence Drawer displays new consequences.
+
+---
+
+## 3. Textual Sequence Diagram
+
+### 3.1 Puzzle Solved (Fast) — Example
+
+**Actors:**
+- Player
+- PuzzleEngine
+- MetaphysicsCore
+- EmotionalDrawer
+- ConsequenceDrawer
+
+**Flow:**
+
+1. **Player** solves a puzzle quickly.
+2. **PuzzleEngine** calls:
+
+   ```js
+   MetaphysicsCore.applyDeltas(
+     { curiosity: +10 },
+     { puzzleId: puzzle.id }
+   );
+   ```
+
+3. **MetaphysicsCore**:
+   - Updates `flags.curiosity`.
+   - Logs a metaphysical event (`delta_applied`).
+   - Recomputes `dominantAspect`.
+   - Updates `profile.lastUpdate`.
+
+4. **PuzzleEngine** then calls:
+
+   ```js
+   const consequences = MetaphysicsCore.resolveConsequences({
+     type: 'PUZZLE_SOLVED',
+     puzzleId: puzzle.id,
+     quality
+   });
+   ```
+
+5. **MetaphysicsCore**:
+   - Reads current emotional state.
+   - Evaluates each registered consequence rule.
+   - For matching rules, generates consequence objects.
+   - Logs `consequence_triggered` events.
+
+6. **PuzzleEngine** forwards consequences to UI:
+
+   ```js
+   EmotionalDrawer.render(MetaphysicsCore.getEmotionalState());
+   ConsequenceDrawer.push(consequences);
+   ```
+
+7. **EmotionalDrawer**:
+   - Animates updated curiosity value.
+   - Updates dominant aspect highlight if changed.
+
+8. **ConsequenceDrawer**:
+   - Adds new consequence cards (e.g., RESONANCE_BOOST).
+   - Optionally auto‑opens to show the event.
+
+---
+
+### 3.2 Node Enter (Trap) — Example
+
+**Actors:**
+- Player
+- nodeRenderer
+- MetaphysicsCore
+- EmotionalDrawer
+- ConsequenceDrawer
+
+**Flow:**
+
+1. **Player** navigates to a trap node.
+2. **nodeRenderer** calls:
+
+   ```js
+   const consequences = MetaphysicsCore.resolveConsequences({
+     type: 'NODE_ENTER',
+     nodeId: node.id,
+     nodeType: node.type
+   });
+   ```
+
+3. **MetaphysicsCore**:
+   - Reads current emotional state.
+   - Evaluates rules (e.g., high courage + trap → BRAVERY_ECHO).
+   - Returns any consequences.
+
+4. **nodeRenderer**:
+   - If consequences include deltas, may call `applyDeltas` as part of effect handling (depending on rule design).
+   - Calls:
+
+     ```js
+     EmotionalDrawer.render(MetaphysicsCore.getEmotionalState());
+     ConsequenceDrawer.push(consequences);
+     ```
+
+5. UI drawers update accordingly.
+
+---
+
+## 4. Event Types
+
+### 4.1 Action Types (Inputs to MetaphysicsCore)
+
+- `NODE_ENTER`
+- `PUZZLE_SOLVED`
+- `PUZZLE_FAILED`
+- `BRANCH_COMPLETE`
+- Other future types as needed.
+
+Each action includes relevant metadata:
+- `nodeId`, `nodeType`
+- `puzzleId`, `quality`
+- `branchId`
+
+### 4.2 Metaphysical Events (Internal Logs)
+
+- `delta_applied`
+- `consequence_triggered`
+- `consequence_error`
+
+These are stored in `profile.arcs`.
+
+---
+
+## 5. Data Flow Summary
+
+1. **Action → Deltas**
+   - Certain actions directly call `applyDeltas` to adjust flags.
+
+2. **Action → Consequences**
+   - All relevant actions call `resolveConsequences(action)`.
+
+3. **Consequences → UI**
+   - Consequences are passed to `ConsequenceDrawer.push(...)`.
+   - Emotional state is refreshed via `EmotionalDrawer.render(...)`.
+
+4. **State → Dominant Aspect**
+   - `MetaphysicsCore` maintains `dominantAspect` based on highest flag.
+
+---
+
+## 6. Integration Points
+
+- `nodeRenderer.js`
+  - On node enter: call `resolveConsequences`.
+- `puzzleEngine.js`
+  - On puzzle solved/failed: call `applyDeltas` then `resolveConsequences`.
+- `drawerManager.js`
+  - Bridges consequences and state to Emotional/Consequence drawers.
+
+---
+
+## 7. Future Extensions
+
+- Global event bus for metaphysical events.
+- Analytics hooks for long‑term player arc analysis.
+- Per‑hunt metaphysical summaries.
+```
+
+---
+
+### 4) `Phase2IntegrationTestPlan.md`
+
+```md
+# Lucky Pikas — Phase 2 Integration Test Plan
+
+## 1. Purpose
+
+This test plan validates the integration of the Phase 2 metaphysics layer with the existing Lucky Pikas engine. It focuses on `MetaphysicsCore`, consequence rules, and UI drawers (Emotional and Consequence).
+
+---
+
+## 2. Scope
+
+### 2.1 In Scope
+
+- `MetaphysicsCore`:
+  - Flag updates.
+  - Dominant aspect calculation.
+  - Consequence rule evaluation.
+- Integration with:
+  - `nodeRenderer` (NODE_ENTER).
+  - `puzzleEngine` (PUZZLE_SOLVED, PUZZLE_FAILED).
+  - Drawer UI modules:
+    - Emotional Drawer.
+    - Consequence Drawer.
+- Basic UX behavior:
+  - Drawer open/close.
+  - State and consequence rendering.
+
+### 2.2 Out of Scope (Phase 2)
+
+- Advanced animations and audio.
+- Long‑term analytics.
+- Cross‑hunt metaphysical persistence.
+
+---
+
+## 3. Test Environment
+
+- **Build:** Phase 2 engine with:
+  - `MetaphysicsCore.js` integrated.
+  - Basic Emotional and Consequence drawers implemented.
+  - `hunt_001` fully playable.
+- **Browsers:** Latest Chrome, Firefox, Safari, Edge.
+- **Devices:** Desktop primary; smoke tests on tablet.
+
+---
+
+## 4. Test Objectives
+
+1. Verify that metaphysical flags update correctly in response to actions.
+2. Confirm that consequence rules trigger under the correct conditions.
+3. Ensure Emotional Drawer reflects current metaphysical state.
+4. Ensure Consequence Drawer displays recent consequences.
+5. Validate that no Phase 1 behaviors are broken.
+
+---
+
+## 5. Test Cases
+
+### 5.1 TC‑01: Initial State Load
+
+**Goal:** Confirm metaphysical state initializes correctly.
+
+- **Preconditions:**
+  - New session, `hunt_001` start.
+- **Steps:**
+  1. Load `game.html`.
+  2. Open Emotional Drawer.
+- **Expected:**
+  - All flags at defined baseline (e.g., 0 or configured defaults).
+  - `dominantAspect` is `null` or expected default.
+  - No consequences in Consequence Drawer.
+
+---
+
+### 5.2 TC‑02: Puzzle Solve → Curiosity Delta
+
+**Goal:** Verify `applyDeltas` updates curiosity and Emotional Drawer.
+
+- **Preconditions:**
+  - Player at first puzzle in `hunt_001`.
+- **Steps:**
+  1. Open Emotional Drawer and note curiosity value.
+  2. Solve puzzle successfully.
+  3. Reopen or observe Emotional Drawer.
+- **Expected:**
+  - Curiosity increased by configured delta (e.g., +10).
+  - `dominantAspect` updated if curiosity becomes highest flag.
+  - No errors in console.
+
+---
+
+### 5.3 TC‑03: Fast Solve → Resonance Boost Consequence
+
+**Goal:** Validate `curiosity_fastsolve_resonance` rule.
+
+- **Preconditions:**
+  - Curiosity sufficiently high (>= 60) via prior actions or test setup.
+  - Puzzle configured to measure “fast” quality.
+- **Steps:**
+  1. Solve the puzzle quickly enough to be classified as `quality = 'fast'`.
+  2. Observe Consequence Drawer.
+  3. Check Emotional Drawer.
+- **Expected:**
+  - Consequence Drawer shows a new card:
+    - Type: RESONANCE_BOOST.
+    - Message: “Insight sparks a resonance pulse.” (or configured text).
+  - Emotional Drawer shows resonance increased by +10.
+  - `dominantAspect` may change to resonance if it becomes highest.
+
+---
+
+### 5.4 TC‑04: Low Clarity + Puzzle Fail → Fog Penalty
+
+**Goal:** Validate `lowclarity_wronganswer_fog` rule.
+
+- **Preconditions:**
+  - Clarity at or below 30 (via prior actions or test setup).
+- **Steps:**
+  1. Intentionally fail a puzzle.
+  2. Observe Consequence Drawer.
+  3. Check Emotional Drawer.
+- **Expected:**
+  - Consequence Drawer shows FOg_PENALTY (or equivalent).
+  - Clarity decreases by configured amount (e.g., -5).
+  - No unexpected changes to other flags.
+
+---
+
+### 5.5 TC‑05: Trap Node → Bravery Echo
+
+**Goal:** Validate `courage_trap_braveryecho` rule.
+
+- **Preconditions:**
+  - Courage >= 50.
+  - A trap node exists in `hunt_001` or test hunt.
+- **Steps:**
+  1. Enter the trap node.
+  2. Observe Consequence Drawer.
+  3. Check Emotional Drawer.
+- **Expected:**
+  - Consequence Drawer shows BRAVERY_ECHO.
+  - Courage increases by configured amount (e.g., +5).
+  - Event logged in metaphysical arcs (if inspected).
+
+---
+
+### 5.6 TC‑06: Branch Complete → Alignment Surge
+
+**Goal:** Validate `alignment_branch_complete` rule.
+
+- **Preconditions:**
+  - Alignment >= 40.
+  - A branch in `hunt_001` can be completed.
+- **Steps:**
+  1. Complete the branch.
+  2. Observe Consequence Drawer.
+  3. Check Emotional Drawer.
+- **Expected:**
+  - Consequence Drawer shows ALIGNMENT_SURGE.
+  - Alignment increases by configured amount (e.g., +10).
+
+---
+
+### 5.7 TC‑07: Final Node → Insight Reward
+
+**Goal:** Validate `resonance_finalnode_insight` rule.
+
+- **Preconditions:**
+  - Resonance >= 70.
+  - Player can reach `node_final`.
+- **Steps:**
+  1. Enter `node_final`.
+  2. Observe Consequence Drawer.
+  3. Verify reward handling.
+- **Expected:**
+  - Consequence Drawer shows INSIGHT_REWARD.
+  - Reward `insight_token` (or configured) is granted.
+  - No regression in normal reward pipeline.
+
+---
+
+### 5.8 TC‑08: Drawer Behavior & Performance
+
+**Goal:** Ensure drawers behave correctly and perform well.
+
+- **Steps:**
+  1. Rapidly open/close Emotional Drawer multiple times.
+  2. Rapidly open/close Consequence Drawer multiple times.
+  3. Trigger multiple consequences in quick succession.
+- **Expected:**
+  - No visual glitches.
+  - No noticeable lag.
+  - No console errors.
+
+---
+
+## 6. Exit Criteria
+
+Phase 2 metaphysics integration is considered stable when:
+
+- All test cases above pass on primary target browsers.
+- No critical or high‑severity defects remain open.
+- No regressions in Phase 1 core loop (boot, timer, HUD, node flow, rewards).
+
+---
+
+## 7. Reporting
+
+- Track test results in your chosen system (e.g., spreadsheet, test management tool).
+- Log defects with:
+  - Steps to reproduce.
+  - Expected vs actual.
+  - Screenshots or logs where relevant.
+```
+
+---
+
+### 5) `hunt_001_MetaphysicsTestScenario.md`
+
+```md
+# Lucky Pikas — hunt_001 Metaphysics Test Scenario
+
+## 1. Purpose
+
+This scenario provides a concrete, end‑to‑end walkthrough of `hunt_001` with metaphysics enabled. It is designed to validate emotional flag changes, consequence rules, and drawer behavior in a narrative context.
+
+---
+
+## 2. Starting Conditions
+
+- New player session.
+- `hunt_001` selected and loaded.
+- Metaphysical state at baseline:
+  - curiosity: 0
+  - courage: 0
+  - clarity: 0
+  - resonance: 0
+  - alignment: 0
+  - dominantAspect: null
+
+---
+
+## 3. Scenario Overview
+
+The player:
+
+1. Enters the starting node.
+2. Solves an early puzzle quickly.
+3. Fails a later puzzle intentionally.
+4. Enters a trap node with high courage.
+5. Completes a branch with sufficient alignment.
+6. Reaches the final node with high resonance.
+
+At each step, metaphysical changes and consequences are observed via the Emotional and Consequence drawers.
+
+---
+
+## 4. Detailed Scenario Steps
+
+### 4.1 Step 1 — Enter `node_start`
+
+- **Action:**
+  - Player begins `hunt_001` and enters `node_start`.
+- **Engine:**
+  - `nodeRenderer` calls:
+
+    ```js
+    MetaphysicsCore.resolveConsequences({
+      type: 'NODE_ENTER',
+      nodeId: 'node_start',
+      nodeType: 'start'
+    });
+    ```
+
+- **Expected Metaphysics:**
+  - No specific consequences (unless rules are defined for start node).
+  - Emotional Drawer shows baseline values.
+- **UI:**
+  - Emotional Drawer:
+    - All flags at 0.
+    - `dominantAspect = null`.
+  - Consequence Drawer:
+    - Empty or no new entries.
+
+---
+
+### 4.2 Step 2 — Solve First Puzzle Quickly
+
+- **Action:**
+  - Player encounters the first puzzle (e.g., an echo‑themed riddle).
+  - Player solves it quickly enough to be classified as `quality = 'fast'`.
+
+- **Engine:**
+  - `puzzleEngine` calls:
+
+    ```js
+    MetaphysicsCore.applyDeltas(
+      { curiosity: +10 },
+      { puzzleId: 'puzzle_echo_001' }
+    );
+
+    const consequences = MetaphysicsCore.resolveConsequences({
+      type: 'PUZZLE_SOLVED',
+      puzzleId: 'puzzle_echo_001',
+      quality: 'fast'
+    });
+    ```
+
+- **Expected Metaphysics:**
+  - Curiosity increases from 0 to 10.
+  - `dominantAspect` becomes `curiosity`.
+  - If curiosity >= 60 is not yet met, `curiosity_fastsolve_resonance` does not trigger here (unless test setup pre‑boosts curiosity).
+
+- **UI:**
+  - Emotional Drawer:
+    - Curiosity bar shows 10.
+    - Dominant aspect: Curiosity.
+  - Consequence Drawer:
+    - If rule threshold not met: no new consequence.
+    - If threshold pre‑met (e.g., via setup): RESONANCE_BOOST card appears.
+
+---
+
+### 4.3 Step 3 — Intentionally Fail a Later Puzzle
+
+- **Action:**
+  - Player reaches a second puzzle (e.g., a more complex cipher).
+  - Player intentionally fails it (wrong answer or timeout).
+
+- **Engine:**
+  - `puzzleEngine` calls:
+
+    ```js
+    const consequences = MetaphysicsCore.resolveConsequences({
+      type: 'PUZZLE_FAILED',
+      puzzleId: 'puzzle_cipher_002'
+    });
+    ```
+
+- **Precondition for Rule:**
+  - Clarity <= 30 (can be ensured via prior deltas or initial config).
+
+- **Expected Metaphysics:**
+  - `lowclarity_wronganswer_fog` rule triggers if clarity <= 30.
+  - Clarity decreases by configured amount (e.g., -5, clamped at 0).
+  - Emotional state reflects reduced clarity.
+
+- **UI:**
+  - Emotional Drawer:
+    - Clarity bar decreases.
+  - Consequence Drawer:
+    - New FOg_PENALTY card:
+      - Message: “Confusion deepens the fog.” (or configured text).
+
+---
+
+### 4.4 Step 4 — Enter Trap Node with High Courage
+
+- **Action:**
+  - Player navigates into a trap node (e.g., `node_trap_001`).
+  - Prior actions or test setup have raised courage to >= 50.
+
+- **Engine:**
+  - `nodeRenderer` calls:
+
+    ```js
+    const consequences = MetaphysicsCore.resolveConsequences({
+      type: 'NODE_ENTER',
+      nodeId: 'node_trap_001',
+      nodeType: 'trap'
+    });
+    ```
+
+- **Expected Metaphysics:**
+  - `courage_trap_braveryecho` rule triggers.
+  - Courage increases by configured amount (e.g., +5).
+  - Emotional state updated; dominant aspect may shift to courage.
+
+- **UI:**
+  - Emotional Drawer:
+    - Courage bar increases.
+    - Dominant aspect may become Courage.
+  - Consequence Drawer:
+    - BRAVERY_ECHO card:
+      - Message: “Your courage reverberates through the chamber.”
+
+---
+
+### 4.5 Step 5 — Complete a Branch with Sufficient Alignment
+
+- **Action:**
+  - Player completes a narrative or puzzle branch (e.g., `branch_echo_path`).
+  - Alignment has been raised to >= 40 via prior choices or setup.
+
+- **Engine:**
+  - Branch completion logic calls:
+
+    ```js
+    const consequences = MetaphysicsCore.resolveConsequences({
+      type: 'BRANCH_COMPLETE',
+      branchId: 'branch_echo_path'
+    });
+    ```
+
+- **Expected Metaphysics:**
+  - `alignment_branch_complete` rule triggers.
+  - Alignment increases by configured amount (e.g., +10).
+  - Emotional state updated; dominant aspect may become Alignment.
+
+- **UI:**
+  - Emotional Drawer:
+    - Alignment bar increases.
+  - Consequence Drawer:
+    - ALIGNMENT_SURGE card:
+      - Message: “Your choices align with deeper forces.”
+
+---
+
+### 4.6 Step 6 — Reach Final Node with High Resonance
+
+- **Action:**
+  - Player proceeds through remaining nodes and reaches `node_final`.
+  - Resonance has been raised to >= 70 (via fast solves and resonance boosts).
+
+- **Engine:**
+  - `nodeRenderer` calls:
+
+    ```js
+    const consequences = MetaphysicsCore.resolveConsequences({
+      type: 'NODE_ENTER',
+      nodeId: 'node_final',
+      nodeType: 'final'
+    });
+    ```
+
+- **Expected Metaphysics:**
+  - `resonance_finalnode_insight` rule triggers.
+  - Consequence includes:
+    - Type: INSIGHT_REWARD.
+    - Reward: `insight_token`.
+  - Emotional state may remain unchanged or be adjusted depending on rule design.
+
+- **UI:**
+  - Emotional Drawer:
+    - Shows final emotional state (high resonance).
+  - Consequence Drawer:
+    - INSIGHT_REWARD card:
+      - Message: “A hidden truth reveals itself.”
+    - Reward handling visible in game (e.g., token indicator).
+
+---
+
+## 5. Success Criteria
+
+This scenario is considered successful if:
+
+- All expected flag changes occur at each step.
+- All relevant consequence rules trigger under the correct conditions.
+- Emotional Drawer consistently reflects current metaphysical state.
+- Consequence Drawer accurately lists new consequences.
+- No regressions are observed in the core treasure‑hunt loop.
+
+---
+
+## 6. Notes
+
+- This scenario can be automated or executed manually.
+- For deterministic testing, consider:
+  - Fixed timers for “fast” classification.
+  - Controlled deltas to reach required thresholds.
+- This scenario serves as a **Phase 2 demo path** for stakeholders, showing how metaphysics makes `hunt_001` feel alive.
+```
+
+If you want, next we can turn these into **actual JS modules** (for the drawers) or a **single Phase 2 PDF pack** that bundles all five files.
